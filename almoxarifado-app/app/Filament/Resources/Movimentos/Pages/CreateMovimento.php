@@ -8,4 +8,42 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateMovimento extends CreateRecord
 {
     protected static string $resource = MovimentoResource::class;
+
+    protected function beforeCreate(): void
+    {
+        //recebe a . lista .de produtos
+        $data = $this->data;
+
+        //·selecionando o produto/qtd-e·tipo pelo id-recebido·na lista
+        $produto = Produto :: find($data['produto_id']);
+        $quantidade = $data['quantidade'];
+        $tipo = $data['tipo'];
+
+        //.Verificar se e uma saida e se.o estoque e suficiente
+        if ($tipo === 's' && $quantidade > $produto->estoque) {
+            //Notificar o usuario sobre o estoque insuficiente
+            Notification::make()
+                ->danger()
+                ->title('Estoque Insuficiente!')
+                ->body("O estoque de '{$produto->nome}' é de apenas .{$produto->estoque} unidade, mas voce te")
+                ->send();
+
+            $this->halt(); //Impede.a-criação do moviment o
+        }
+    }
+
+    //Hook - Remover ou aumentar o estoque
+    protected function afterCreate(): void
+    {
+        $movimento = $this->getRecord(); // Registro do movimento criado
+        $produto = $movimento->produto; // Produto relacionado ao movimento
+
+        if ($movimento->tipo = 'e') {
+            // Entrada: Aumentar o estoque
+            $produto->increment('estoque', $movimento->quantidade);
+        } else {
+            // Saida: Diminuir o estoque
+            $produto->decrement('estoque', $movimento->quantidade);
+        }
+    }
 }
